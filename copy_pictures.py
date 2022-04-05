@@ -18,7 +18,7 @@ MONTHS = [
     "July", "August", "September", "October", "November", "December"
     ]
 
-EXIFREAD_ALLOWED_EXTS = ["*.jpg", "*.jpeg", "*.heic"] #
+EXIFREAD_ALLOWED_EXTS = ["*.jpg", "*.jpeg", "*.heic"]
 
 # Copies the image according to predefined rules
 # Todo: add PNG support
@@ -72,28 +72,26 @@ def copy_image(date_str, image_file, image_path):
 
 # hashes file, checks if it exists then places into hash set and hash file
 def process_hash (raw_path) -> bool:
-    unique = False
+    
+    unique = False  # Initially, assume that image is not unique
     path_str = str(raw_path)
     # Todo: create a more optimized solution for saving / checking hashes
     image = open(path_str, "rb")
-    bytes = image.read()
-    image_hash = hashlib.md5()
-    image_hash.update(bytes)
+    image_bytes = image.read(-1)
+    image_hash = hashlib.sha256()
+    image_hash.update(image_bytes)
     digest = image_hash.hexdigest()
 
+    # if image is detected, write it to the hash file and set. Then flip unique var
     if digest not in hash_set:
         hash_file.write(str(digest) + '\n')
         hash_set.add(digest)
+        print("unique")
         unique = True
 
     image.close()
     return unique
 
-def video_process(image):
-    print(stub)
-
-def png_process(image):
-    print(stub)
 
 def exifread_process(image):
      # open image
@@ -116,6 +114,14 @@ def exifread_process(image):
             image_date_tag = "-1"
 
          copy_image(image_date_tag, image_file, image)
+
+
+def video_process(image):
+    print("stub")
+
+def png_process(image):
+    print("stub")
+
 
 # A simple recursive DFS implmentation for scanning images
 
@@ -156,7 +162,7 @@ def scan_directory(directory):
         print(err)
 
 # MAIN
-# For future testing / usage, this code should be able to run as module. For now, 
+# For future testing / usage, this code should be able to run as module. For now, this is prevented
 if __name__ != "__main__":
     print(f"{FILENAME}: This code is not intended to be executed as a module. Abort.")
 
@@ -206,7 +212,7 @@ if directory_invalid:
     sys.exit("-2")
 
 # Create set of hashes
-# It occurs to me that I should probably use some sort of RDMS for this. Too bad, we're doing it the 
+# It occurs to me that I should probably use some sort of RDMS for this. Too bad.
 
 scan_directory(target)
 hash_file.close()
