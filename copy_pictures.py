@@ -34,8 +34,10 @@ def copy_image(date_str, image_file, image_path):
         unknown_path = dest.joinpath("Unknown")
         unknown_path.mkdir(exist_ok=True)
 
+        print("Unknown file detected.")
+
         # copy file
-        shutil.copy(str(image_path), str(unknown_path))
+        shutil.copy2(str(image_path), str(unknown_path))
 
     # else, first create year, then month, then day folders and copy image.
     else:
@@ -45,7 +47,7 @@ def copy_image(date_str, image_file, image_path):
         month_num = int(date_str[5:7])
         day = date_str[8:10]
 
-        print("year = " + year + " month = " + str(month_num) + " day = " + day)
+        print("year = " + year + " month = " + str(month_num) + " day = " + day) # debug
 
         # create / navigate directories
         # print(month_num)
@@ -64,7 +66,7 @@ def copy_image(date_str, image_file, image_path):
 
         # copy file
         # todo: logic for when identical filenames are copied.
-        shutil.copy(str(image_path), str(day_path))
+        shutil.copy2(str(image_path), str(day_path))
 
 
     # close image file
@@ -80,15 +82,13 @@ def process_hash (raw_path) -> bool:
     image_bytes = image.read(-1)
     image_hash = hashlib.sha256()
     image_hash.update(image_bytes)
-    digest = image_hash.hexdigest()
+    digest = int(image_hash.hexdigest(), base=16)
 
-    # if image is detected, write it to the hash file and set. Then flip unique var
+    # if image is detected, write it to hashset. Then flip unique var
     if digest not in hash_set:
-        hash_file.write(str(digest) + '\n')
         hash_set.add(digest)
-        print("unique")
         unique = True
-
+    
     image.close()
     return unique
 
@@ -128,7 +128,6 @@ def png_process(image):
 # Note: Switched from BFS as with excluding symlinks,
 # DFS is equivalent in function with lower cost.
 def scan_directory(directory):
-
     try: 
         
         # add subdirectories to stack
@@ -158,6 +157,7 @@ def scan_directory(directory):
         for i in images:
             exifread_process(i)
     
+    # Catch-all exception handling is used as specific behaviour for recovering from an exception is not required
     except BaseException as err:
         print(err)
 
@@ -183,19 +183,24 @@ hash_file_path = dest.joinpath(HASH_FILENAME)
 hash_file_path.touch(exist_ok=True)
 
 hash_file = open(hash_file_path, "r")
-hash_file_read = hash_file.read(-1)     # read whole file into memory
 hash_set = set()
+line_begin = 0
+line_end = 0
 
-# get len by dividing the total len by the 32 char hash + 1 newline - 1 = 32
-hash_file_len = int(len(hash_file_read) / HASH_LINE_LEN)
+# convert hashfile to set
+current_digest = hash_file.readline()
 
-for i in range(1, hash_file_len):
-    print("ping")
-    curr_index = i*HASH_LINE_LEN
-    hash_set.add(hash_file_read[curr_index - HASH_LINE_LEN:curr_index])
+while current_digest != "":
+    
+    try:
+        hash_set.add(int(current_digest, base=16))
+    
+    except ValueError:
+        print("'" + str(current_digest) + "'" + " could not be read as a hex int!")
+    
+    current_digest = hash_file.readline()
 
 hash_file.close()
-hash_file = open(hash_file_path, "wt")
 
 # check if directories are valid
 directory_invalid = False
@@ -211,8 +216,14 @@ if dest.is_dir() != True:
 if directory_invalid:
     sys.exit("-2")
 
-# Create set of hashes
-# It occurs to me that I should probably use some sort of RDMS for this. Too bad.
+# Execute copy operation
 
 scan_directory(target)
+
+# dump set into hashfile
+hash_file = open(hash_file_path, "w")
+for x in hash_set:
+    hash_file.write(hex(x) + "\n")
+
+
 hash_file.close()
